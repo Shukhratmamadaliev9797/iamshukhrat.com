@@ -45,6 +45,7 @@ interface Project {
   description: string
   github?: string
   highlights?: string[]
+  badge?: string
 }
 
 function ProjectCard({ project, index, isVisible }: { project: Project; index: number; isVisible: boolean }) {
@@ -74,9 +75,14 @@ function ProjectCard({ project, index, isVisible }: { project: Project; index: n
       {/* Project details */}
       <div className="space-y-4">
         <h3 className="text-xl md:text-2xl font-bold text-foreground">
-          {project.name}
+          {project.name} 
+          
         </h3>
-
+          {project.badge && (
+             <span className="px-3 py-1 text-xs font-medium bg-primary/20 text-primary rounded-full mb-10">
+                {project.badge}
+             </span>
+            )}
         <p
           className="text-muted-foreground text-sm leading-relaxed"
           dangerouslySetInnerHTML={{ __html: highlightText(project.description, project.highlights) }}
