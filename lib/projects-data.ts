@@ -1,5 +1,13 @@
 export const projectsData = {
   real: [
+     {
+      name: "Proactiveuz - Study Abroad Agency",
+      url: "https://proactiveuz.co.uk/",
+      img: "proactiveuz.png",
+      technologies: ["html", "css", 'typescript', 'nextjs', 'tailwind'],
+      description:
+        "This project involves creating a user-friendly web app for a study abroad consulting agency. Users can explore detailed university information, stay updated on scholarship news, and effortlessly connect with the agency for personalized guidance. The goal is to streamline the study abroad process and provide a convenient platform for users to access essential information.",
+    },
     {
       name: "Assalaam UK - Charity",
       url: "https://assalomuk-158ba75d57d1.herokuapp.com/",
@@ -18,14 +26,7 @@ export const projectsData = {
       description:
         "charity-focused web project – a purpose-built platform designed to inspire positive change. With a user-friendly interface, users can easily contribute to various donation projects, stay informed about ongoing charity activities through news updates, and track the progress of their donations. This fully functional website controlled by admins to efficiently manage the entire platform, ensuring a seamless experience for both donors and beneficiaries.",
     },
-    {
-      name: "Proactiveuz - Study Abroad Agency",
-      url: "https://proactiveuz.co.uk/",
-      img: "proactiveuz.png",
-      technologies: ["React", "Redux", "Sass"],
-      description:
-        "This project involves creating a user-friendly web app for a study abroad consulting agency. Users can explore detailed university information, stay updated on scholarship news, and effortlessly connect with the agency for personalized guidance. The goal is to streamline the study abroad process and provide a convenient platform for users to access essential information.",
-    },
+   
   ],
   personal: [
     {
@@ -55,6 +56,15 @@ export const projectsData = {
         description:
           "This project focuses on building a user-friendly platform where people can give away items for free. Users can easily post things they no longer need, add photos and descriptions, and categorize their listings for better visibility. Visitors can browse available items, search by location, and contact owners to arrange pickup. The goal is to reduce waste, encourage community sharing, and provide a simple way for people to pass on useful items instead of throwing them away.",
       },
+       {
+        name: "Weathernow",
+        url: "https://weathernow-three-silk.vercel.app/",
+        img: "weather.png",
+        technologies: ["html", "css", 'typescript', 'nextjs', 'tailwind'],
+        github: "https://github.com/Shukhratmamadaliev9797/weather.io",
+        description:
+          "This project is a simple weather app built with pure HTML, CSS, and JavaScript using the OpenWeather API. Users can search any city to view current weather details, temperature, humidity, and icons that update in real time. The goal was to practice API integration, improve front-end logic, and create a clean, responsive UI without using any frameworks.",
+      },
       {
         name: "Eatturkish",
         url: "https://eatturkish-af669971ee9a.herokuapp.com/",
@@ -65,6 +75,7 @@ export const projectsData = {
         description:
           "This project focuses on creating a modern and user-friendly website for a Turkish restaurant. Customers can explore the full menu with detailed dish information, updated pricing, and high-quality food photos. The system includes online ordering. On the backend, an admin panel allows restaurant staff to manage menu items, update prices, track orders, and handle reservations efficiently. This is an ongoing project and is still under active development as new features and improvements continue to be added.",
       },
+      
       {
         name: "Old Portofolio 1",
         url: "https://portofolio-shukhrat.netlify.app/",
@@ -102,15 +113,7 @@ export const projectsData = {
         description:
           "This project is a modern news website that displays the latest articles across different categories. It includes a clean layout, dynamic content loading, and easy navigation between topics. The goal was to practice working with APIs, build a responsive interface, and create a smooth reading experience for users.",
       },
-      {
-        name: "Weather app",
-        url: "https://shukhrat-weather-app.netlify.app/",
-        img: "weather.png",
-        technologies: ["html", "css", "js"],
-        github: "https://github.com/Shukhratmamadaliev9797/weather.io",
-        description:
-          "This project is a simple weather app built with pure HTML, CSS, and JavaScript using the OpenWeather API. Users can search any city to view current weather details, temperature, humidity, and icons that update in real time. The goal was to practice API integration, improve front-end logic, and create a clean, responsive UI without using any frameworks.",
-      },
+     
       {
         name: "Photo finder",
         url: "https://shukhrat-unsplash-app.netlify.app/",

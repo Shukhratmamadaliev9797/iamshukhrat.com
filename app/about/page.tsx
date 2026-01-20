@@ -94,15 +94,15 @@ export default function AboutPage() {
                   </div>
 
                   <div>
-                    <p className="text-sm text-primary mb-1">6 Months Contract</p>
+                    <p className="text-sm text-primary mb-1">9 Months Contract</p>
                     <h4 className="text-lg font-semibold text-foreground">Synkd</h4>
                     <p className="text-muted-foreground text-sm">Front-End Developer</p>
                   </div>
 
                   <div>
-                    <p className="text-sm text-primary mb-1">2017 - 2019</p>
-                    <h4 className="text-lg font-semibold text-foreground">Junior Developer</h4>
-                    <p className="text-muted-foreground text-sm">Tech Startup</p>
+                    <p className="text-sm text-primary mb-1">2021 - 2022</p>
+                    <h4 className="text-lg font-semibold text-foreground">Intern</h4>
+                    <p className="text-muted-foreground text-sm">Ulster University</p>
                   </div>
                 </div>
 
@@ -284,12 +284,12 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              <div className="border-l-2 border-secondary pl-6">
+              <div className="border-l-2 border-primary pl-6">
                 <p className="text-sm text-muted-foreground mb-1">2017 - 2019</p>
-                <h4 className="text-xl font-semibold text-foreground mb-2">Junior Developer</h4>
-                <p className="text-muted-foreground text-sm mb-3">Tech Startup</p>
+                <h4 className="text-xl font-semibold text-foreground mb-2">INTERN</h4>
+                <p className="text-muted-foreground text-sm mb-3">Ulster University</p>
                 <p className="text-muted-foreground text-sm leading-relaxed">
-                  Started career as a junior developer, learning industry best practices and working on various client projects. Gained experience in HTML, CSS, JavaScript, and version control systems.
+                  Developed a full project in collaboration with a supervising lecturer, worked closely with senior developers on testing and code reviews, and assisted in designing and implementing new frontend features using modern web technologies.
                 </p>
               </div>
             </div>

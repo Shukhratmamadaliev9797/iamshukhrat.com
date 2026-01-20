@@ -13,6 +13,8 @@ const frontEndSkills = [
   { img: "redux.png"},
   { img: "sass.png"},
   { img: "tailwind.png" },
+  {img: 'nextjs.png'},
+  {img: 'typescript.png'}
 ]
 
 const backEndSkills = [
