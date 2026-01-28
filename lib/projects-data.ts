@@ -50,7 +50,7 @@ export const projectsData = {
 
       {
         name: "Bepul",
-        url: "https://dashboard.heroku.com/apps/suxbat-app",
+        url: "https://bepul-app-06ff97637537.herokuapp.com/",
         img: "bepul.png",
         technologies: ["react", "sass", "node", "expressjs", "mongo"],
         github: "https://github.com/Shukhratmamadaliev9797/Bepul",
