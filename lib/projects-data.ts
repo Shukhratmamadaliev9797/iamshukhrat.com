@@ -10,7 +10,7 @@ export const projectsData = {
     },
     {
       name: "Assalaam UK - Charity",
-      url: "https://assalomuk-158ba75d57d1.herokuapp.com/",
+      url: "https://assalomuk-app-9313ed0723a1.herokuapp.com/",
       img: "assalaam.png",
       badge: 'Development Phase',
       technologies: [
@@ -32,7 +32,7 @@ export const projectsData = {
   personal: [
     {
         name: "Suxbat - Social media app",
-        url: "https://suxbat-ea74802884a2.herokuapp.com/",
+        url: "https://suxbat-app-8e150ce1de19.herokuapp.com/",
         img: "suxbat.png",
         technologies: [
           "react",
@@ -50,7 +50,7 @@ export const projectsData = {
 
       {
         name: "Bepul",
-        url: "https://bepul-eb7dff9b239a.herokuapp.com/",
+        url: "https://dashboard.heroku.com/apps/suxbat-app",
         img: "bepul.png",
         technologies: ["react", "sass", "node", "expressjs", "mongo"],
         github: "https://github.com/Shukhratmamadaliev9797/Bepul",
@@ -88,7 +88,7 @@ export const projectsData = {
      
 {
         name: "Eatturkish",
-        url: "https://eatturkish-af669971ee9a.herokuapp.com/",
+        url: "https://eatturkish-app-06a2cb4a425f.herokuapp.com/",
         img: "eatturkish.png",
         technologies: ["react", "sass", "node", "expressjs", "mongo"],
         github: "https://github.com/Shukhratmamadaliev9797/Eatturkish",
@@ -108,7 +108,7 @@ export const projectsData = {
       },
       {
         name: "News",
-        url: "https://shrieking-hollow-68252-b5750eee12d2.herokuapp.com/",
+        url: "https://world-news-app-a64d1e7f1d6b.herokuapp.com/",
         img: "news.png",
         technologies: ["react", "redux", "node", "expressjs", "mongo"],
         github: "https://github.com/Shukhratmamadaliev9797/blog-app",
