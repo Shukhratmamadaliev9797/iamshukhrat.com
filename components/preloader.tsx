@@ -12,6 +12,7 @@ export function Preloader({ onComplete }: { onComplete: () => void }) {
   const size = 280
   const radius = 110
   const segmentAngle = 360 / totalSegments // Full circle (360 degrees)
+  const formatCoord = (value: number) => value.toFixed(4)
 
   useEffect(() => {
     // Trigger content to show immediately so it's visible behind the split
@@ -117,10 +118,10 @@ export function Preloader({ onComplete }: { onComplete: () => void }) {
             const angleRad = (angle * Math.PI) / 180
             
             // Calculate position for each segment (thicker and longer dashes)
-            const x1 = size / 2 + (radius - 18) * Math.cos(angleRad)
-            const y1 = size / 2 + (radius - 18) * Math.sin(angleRad)
-            const x2 = size / 2 + (radius + 18) * Math.cos(angleRad)
-            const y2 = size / 2 + (radius + 18) * Math.sin(angleRad)
+            const x1 = formatCoord(size / 2 + (radius - 18) * Math.cos(angleRad))
+            const y1 = formatCoord(size / 2 + (radius - 18) * Math.sin(angleRad))
+            const x2 = formatCoord(size / 2 + (radius + 18) * Math.cos(angleRad))
+            const y2 = formatCoord(size / 2 + (radius + 18) * Math.sin(angleRad))
             
             const isFilled = index < filledSegments
             

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { ExternalLink, Github } from "lucide-react"
 import { MacbookFrame } from "@/components/macbook-frame"
+import { PhoneFrame } from "@/components/phone-frame"
 import { projectsData } from "@/lib/projects-data"
 import { Navbar } from "@/components/navbar"
 
@@ -39,16 +40,31 @@ function TechBadge({ tech }: { tech: string }) {
 
 interface Project {
   name: string
-  url: string
+  url?: string
   img: string
   technologies: string[]
   description: string
   github?: string
   highlights?: string[]
   badge?: string
+  previewType?: "desktop" | "mobile"
+}
+
+type ProjectsPayload = {
+  real: Project[]
+  personal: Project[]
 }
 
 function ProjectCard({ project, index, isVisible }: { project: Project; index: number; isVisible: boolean }) {
+  const isMobileByTech = project.technologies?.some((tech) =>
+    ["react-native", "expo", "flutter", "swift", "kotlin", "android", "ios", "mobile"].includes(
+      tech.toLowerCase(),
+    ),
+  )
+  const isMobileProject = project.previewType
+    ? project.previewType === "mobile"
+    : isMobileByTech
+
   const highlightText = (text: string, highlights?: string[]) => {
     if (!highlights || highlights.length === 0) return text
     
@@ -67,22 +83,25 @@ function ProjectCard({ project, index, isVisible }: { project: Project; index: n
       }`}
       style={{ transitionDelay: `${index * 150}ms` }}
     >
-      {/* MacBook with project image */}
-      <div className="flex justify-center lg:justify-start">
-        <MacbookFrame imageSrc={project.img} alt={project.name} />
+      {/* Device frame with project image */}
+      <div className={`flex justify-center ${isMobileProject ? "" : "lg:justify-start"}`}>
+        {isMobileProject ? (
+          <PhoneFrame imageSrc={project.img} alt={project.name} />
+        ) : (
+          <MacbookFrame imageSrc={project.img} alt={project.name} />
+        )}
       </div>
 
       {/* Project details */}
       <div className="space-y-4">
-        <h3 className="text-xl md:text-2xl font-bold text-foreground">
-          {project.name} 
-          
-        </h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-xl md:text-2xl font-bold text-foreground">{project.name}</h3>
           {project.badge && (
-             <span className="px-3 py-1 text-xs font-medium bg-primary/20 text-primary rounded-full mb-10">
-                {project.badge}
-             </span>
-            )}
+            <span className="px-3 py-1 text-xs font-medium bg-primary/20 text-primary rounded-full">
+              {project.badge}
+            </span>
+          )}
+        </div>
         <p
           className="text-muted-foreground text-sm leading-relaxed"
           dangerouslySetInnerHTML={{ __html: highlightText(project.description, project.highlights) }}
@@ -92,23 +111,25 @@ function ProjectCard({ project, index, isVisible }: { project: Project; index: n
         <div>
           <h4 className="text-sm font-semibold text-foreground mb-3">Technologies</h4>
           <div className="flex flex-wrap gap-2">
-             {project.technologies?.map((tech, idx) => {
-                      return <img className="h-10 w-10 object-cover" src={`${tech}.png`} alt="" />;
-                    })}
+            {project.technologies?.map((tech, idx) => {
+              return <img key={`${project.name}-${tech}-${idx}`} className="h-10 w-10 object-cover" src={`${tech}.png`} alt={tech} />
+            })}
           </div>
         </div>
 
         {/* Buttons */}
         <div className="flex flex-wrap gap-3 pt-2">
-          <a
-            href={project.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-transparent text-foreground text-sm font-medium transition-all hover:bg-primary/10 hover:border-primary hover:text-primary"
-          >
-            Live
-            <ExternalLink className="w-4 h-4" />
-          </a>
+          {project.url ? (
+            <a
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-transparent text-foreground text-sm font-medium transition-all hover:bg-primary/10 hover:border-primary hover:text-primary"
+            >
+              Live
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          ) : null}
           {project.github && (
             <a
               href={project.github}
@@ -128,9 +149,36 @@ function ProjectCard({ project, index, isVisible }: { project: Project; index: n
 
 export default function ProjectsPage() {
   const [isVisible, setIsVisible] = useState(false)
+  const [projects, setProjects] = useState<ProjectsPayload>(projectsData)
 
   useEffect(() => {
-    setIsVisible(true)
+    let isMounted = true
+
+    async function loadProjects() {
+      try {
+        const response = await fetch("/api/projects", { cache: "no-store" })
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`)
+        }
+
+        const payload = await response.json()
+        if (isMounted && payload?.data) {
+          setProjects(payload.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch projects:", error)
+      } finally {
+        if (isMounted) {
+          setIsVisible(true)
+        }
+      }
+    }
+
+    loadProjects()
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   return (
@@ -150,7 +198,7 @@ export default function ProjectsPage() {
             </h2>
 
             <div className="space-y-16">
-              {projectsData.real.map((project, index) => (
+              {projects.real.map((project, index) => (
                 <ProjectCard
                   key={project.name}
                   project={project}
@@ -173,11 +221,11 @@ export default function ProjectsPage() {
             </h2>
 
             <div className="space-y-16">
-              {projectsData.personal.map((project, index) => (
+              {projects.personal.map((project, index) => (
                 <ProjectCard
                   key={project.name}
                   project={project}
-                  index={index + projectsData.real.length}
+                  index={index + projects.real.length}
                   isVisible={isVisible}
                 />
               ))}
