@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { ExternalLink, Github } from "lucide-react"
 import { MacbookFrame } from "@/components/macbook-frame"
 import { PhoneFrame } from "@/components/phone-frame"
-import { projectsData } from "@/lib/projects-data"
 import { Navbar } from "@/components/navbar"
 
 const techColors: Record<string, string> = {
@@ -53,6 +52,52 @@ interface Project {
 type ProjectsPayload = {
   real: Project[]
   personal: Project[]
+}
+
+function ProjectCardSkeleton() {
+  return (
+    <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-2 lg:gap-12 animate-pulse">
+      <div className="mx-auto h-[260px] w-full max-w-[500px] rounded-2xl border border-border bg-card/40 md:h-[300px]" />
+
+      <div className="space-y-4">
+        <div className="h-7 w-3/5 rounded-md bg-card/60" />
+        <div className="space-y-2">
+          <div className="h-4 w-full rounded-md bg-card/60" />
+          <div className="h-4 w-11/12 rounded-md bg-card/60" />
+          <div className="h-4 w-10/12 rounded-md bg-card/60" />
+        </div>
+
+        <div className="space-y-3">
+          <div className="h-4 w-24 rounded-md bg-card/60" />
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="h-10 w-10 rounded-md bg-card/60" />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <div className="h-10 w-24 rounded-full bg-card/60" />
+          <div className="h-10 w-24 rounded-full bg-card/60" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProjectsSectionSkeleton({ title }: { title: "Real" | "Personal" }) {
+  return (
+    <section className="mb-16">
+      <h2 className="mb-10 text-3xl font-bold md:text-4xl">
+        <span className="text-primary">{title}</span> <span className="text-foreground">Projects</span>
+      </h2>
+
+      <div className="space-y-16">
+        <ProjectCardSkeleton />
+        <ProjectCardSkeleton />
+      </div>
+    </section>
+  )
 }
 
 function ProjectCard({ project, index, isVisible }: { project: Project; index: number; isVisible: boolean }) {
@@ -112,7 +157,16 @@ function ProjectCard({ project, index, isVisible }: { project: Project; index: n
           <h4 className="text-sm font-semibold text-foreground mb-3">Technologies</h4>
           <div className="flex flex-wrap gap-2">
             {project.technologies?.map((tech, idx) => {
-              return <img key={`${project.name}-${tech}-${idx}`} className="h-10 w-10 object-cover" src={`${tech}.png`} alt={tech} />
+              return (
+                <img
+                  key={`${project.name}-${tech}-${idx}`}
+                  className="h-10 w-10 object-cover"
+                  src={`${tech}.png`}
+                  alt={tech}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )
             })}
           </div>
         </div>
@@ -149,27 +203,35 @@ function ProjectCard({ project, index, isVisible }: { project: Project; index: n
 
 export default function ProjectsPage() {
   const [isVisible, setIsVisible] = useState(false)
-  const [projects, setProjects] = useState<ProjectsPayload>(projectsData)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [projects, setProjects] = useState<ProjectsPayload>({ real: [], personal: [] })
 
   useEffect(() => {
     let isMounted = true
 
     async function loadProjects() {
       try {
+        setIsVisible(false)
+        setError("")
+        setIsLoading(true)
         const response = await fetch("/api/projects", { cache: "no-store" })
+        const payload = await response.json()
+
         if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`)
+          throw new Error(payload?.message || `Request failed with status ${response.status}`)
         }
 
-        const payload = await response.json()
-        if (isMounted && payload?.data) {
+        if (isMounted && payload?.success && payload?.data) {
           setProjects(payload.data)
         }
       } catch (error) {
-        console.error("Failed to fetch projects:", error)
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : "Projects yuklab bo'lmadi.")
+        }
       } finally {
         if (isMounted) {
-          setIsVisible(true)
+          setIsLoading(false)
         }
       }
     }
@@ -181,56 +243,83 @@ export default function ProjectsPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (isLoading) return
+
+    const raf = requestAnimationFrame(() => {
+      setIsVisible(true)
+    })
+
+    return () => cancelAnimationFrame(raf)
+  }, [isLoading])
+
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-background p-4 md:p-8 lg:p-12">
         <div className="mx-auto max-w-6xl">
-          {/* Real Projects Section */}
-          <section className="mb-16">
-            <h2
-              className={`text-3xl md:text-4xl font-bold mb-10 transition-all duration-700 ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10"
-              }`}
-            >
-              <span className="text-primary">Real</span>{" "}
-              <span className="text-foreground">Projects</span>
-            </h2>
+          {isLoading ? (
+            <>
+              <ProjectsSectionSkeleton title="Real" />
+              <ProjectsSectionSkeleton title="Personal" />
+            </>
+          ) : null}
 
-            <div className="space-y-16">
-              {projects.real.map((project, index) => (
-                <ProjectCard
-                  key={project.name}
-                  project={project}
-                  index={index}
-                  isVisible={isVisible}
-                />
-              ))}
-            </div>
-          </section>
+          {error ? (
+            <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-300">{error}</div>
+          ) : null}
 
-          {/* Personal Projects Section */}
-          <section>
-            <h2
-              className={`text-3xl md:text-4xl font-bold mb-10 transition-all duration-700 delay-300 ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10"
-              }`}
-            >
-              <span className="text-primary">Personal</span>{" "}
-              <span className="text-foreground">Projects</span>
-            </h2>
+          {!isLoading ? (
+            <>
+              {/* Real Projects Section */}
+              <section className="mb-16">
+                <h2
+                  className={`text-3xl md:text-4xl font-bold mb-10 transition-all duration-700 ${
+                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10"
+                  }`}
+                >
+                  <span className="text-primary">Real</span>{" "}
+                  <span className="text-foreground">Projects</span>
+                </h2>
 
-            <div className="space-y-16">
-              {projects.personal.map((project, index) => (
-                <ProjectCard
-                  key={project.name}
-                  project={project}
-                  index={index + projects.real.length}
-                  isVisible={isVisible}
-                />
-              ))}
-            </div>
-          </section>
+                <div className="space-y-16">
+                  {projects.real.map((project, index) => (
+                    <ProjectCard
+                      key={project.name}
+                      project={project}
+                      index={index}
+                      isVisible={isVisible}
+                    />
+                  ))}
+                </div>
+                {projects.real.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">Real projects topilmadi.</p> : null}
+              </section>
+
+              {/* Personal Projects Section */}
+              <section>
+                <h2
+                  className={`text-3xl md:text-4xl font-bold mb-10 transition-all duration-700 delay-300 ${
+                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10"
+                  }`}
+                >
+                  <span className="text-primary">Personal</span>{" "}
+                  <span className="text-foreground">Projects</span>
+                </h2>
+
+                <div className="space-y-16">
+                  {projects.personal.map((project, index) => (
+                    <ProjectCard
+                      key={project.name}
+                      project={project}
+                      index={index + projects.real.length}
+                      isVisible={isVisible}
+                    />
+                  ))}
+                </div>
+                {projects.personal.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">Personal projects topilmadi.</p> : null}
+              </section>
+            </>
+          ) : null}
         </div>
       </main>
     </>

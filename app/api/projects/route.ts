@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { projectsData } from "@/lib/projects-data"
 import {
   createProjectInDb,
   getProjectsGroupedFromDb,
@@ -11,26 +10,15 @@ import {
 
 export async function GET() {
   if (!hasDatabaseConfig()) {
-    return NextResponse.json({
-      source: "static",
-      data: projectsData,
-      message: "DATABASE_URL is missing. Returning static fallback data.",
-    })
+    return NextResponse.json({ success: false, message: "DATABASE_URL is missing." }, { status: 400 })
   }
 
   try {
     const data = await getProjectsGroupedFromDb()
-    return NextResponse.json({ source: "database", data })
+    return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error("Failed to read projects from database:", error)
-    return NextResponse.json(
-      {
-        source: "static-fallback",
-        data: projectsData,
-        message: "Database query failed. Returning static fallback data.",
-      },
-      { status: 200 },
-    )
+    return NextResponse.json({ success: false, message: "Failed to fetch projects." }, { status: 500 })
   }
 }
 
