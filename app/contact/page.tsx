@@ -17,6 +17,7 @@ export default function ContactPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [submitError, setSubmitError] = useState("")
 
   useEffect(() => {
     setIsVisible(true)
@@ -25,16 +26,27 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitError("")
 
-    // Simulate sending email (in production, connect to email service)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
 
-    // In production, you would send to: shukhratmamadaliev.dev@gmail.com
-    console.log("Sending to: shukhratmamadaliev.dev@gmail.com", formData)
+      const payload = await response.json()
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.message || "Message yuborishda xatolik yuz berdi.")
+      }
 
-    setIsSubmitting(false)
-    setShowSuccess(true)
-    setFormData({ name: "", email: "", subject: "", message: "" })
+      setShowSuccess(true)
+      setFormData({ name: "", email: "", subject: "", message: "" })
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Xabar yuborilmadi.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -181,6 +193,8 @@ export default function ContactPage() {
                 </div>
 
                 {/* Submit Button */}
+                {submitError ? <p className="text-sm text-red-400">{submitError}</p> : null}
+
                 <Button
                   type="submit"
                   disabled={isSubmitting}
