@@ -17,11 +17,16 @@ type FormState = {
   url: string
   img: string
   imagePublicId: string
-  technologies: string
+  technologies: string[]
   description: LocalizedField
   badge: LocalizedField
   github: string
   admin: string
+}
+
+type SkillOption = {
+  id: number
+  name: string
 }
 
 const initialLocalized: LocalizedField = { uz: "", ru: "", en: "" }
@@ -33,7 +38,7 @@ const initialState: FormState = {
   url: "",
   img: "",
   imagePublicId: "",
-  technologies: "",
+  technologies: [],
   description: { ...initialLocalized },
   badge: { ...initialLocalized },
   github: "",
@@ -60,6 +65,9 @@ export default function EditAdminProjectPage() {
   const [localPreviewUrl, setLocalPreviewUrl] = useState("")
   const [error, setError] = useState("")
   const [uploadMessage, setUploadMessage] = useState("")
+  const [skills, setSkills] = useState<SkillOption[]>([])
+  const [skillsLoading, setSkillsLoading] = useState(true)
+  const [skillsError, setSkillsError] = useState("")
 
   const projectNameForUpload = form.name.uz.trim() || form.name.en.trim() || form.name.ru.trim()
   const previewImage = localPreviewUrl || form.img
@@ -79,6 +87,40 @@ export default function EditAdminProjectPage() {
       },
     }))
   }
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadSkills() {
+      setSkillsLoading(true)
+      setSkillsError("")
+      try {
+        const response = await fetch("/api/skills", { cache: "no-store" })
+        const payload = await response.json()
+        if (!response.ok || !payload?.success) {
+          throw new Error(payload?.message || "Skills yuklab bo'lmadi.")
+        }
+
+        if (isMounted) {
+          setSkills(payload.skills ?? [])
+        }
+      } catch (loadError) {
+        if (isMounted) {
+          setSkillsError(loadError instanceof Error ? loadError.message : "Skills yuklashda xatolik.")
+        }
+      } finally {
+        if (isMounted) {
+          setSkillsLoading(false)
+        }
+      }
+    }
+
+    loadSkills()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     async function loadProject() {
@@ -103,7 +145,9 @@ export default function EditAdminProjectPage() {
           url: project.url,
           img: project.img,
           imagePublicId: project.imagePublicId ?? "",
-          technologies: Array.isArray(project.technologies) ? project.technologies.join(", ") : "",
+          technologies: Array.isArray(project.technologies)
+            ? project.technologies.map((tech: unknown) => String(tech).trim()).filter(Boolean)
+            : [],
           description: toLocalized(project.descriptionI18n, project.description),
           badge: toLocalized(project.badgeI18n, project.badge ?? ""),
           github: project.github ?? "",
@@ -137,10 +181,7 @@ export default function EditAdminProjectPage() {
       url: form.url,
       img: overrides?.img ?? form.img,
       imagePublicId: overrides?.imagePublicId ?? form.imagePublicId,
-      technologies: form.technologies
-        .split(",")
-        .map((tech) => tech.trim())
-        .filter(Boolean),
+      technologies: form.technologies,
       github: form.github,
       admin: form.admin,
       nameI18n: form.name,
@@ -156,6 +197,10 @@ export default function EditAdminProjectPage() {
     setUploadMessage("")
 
     try {
+      if (form.technologies.length === 0) {
+        throw new Error("Kamida bitta technology tanlang.")
+      }
+
       let img = form.img
       let imagePublicId = form.imagePublicId
 
@@ -197,6 +242,16 @@ export default function EditAdminProjectPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  function toggleTechnology(techName: string) {
+    setForm((prev) => {
+      const exists = prev.technologies.includes(techName)
+      if (exists) {
+        return { ...prev, technologies: prev.technologies.filter((tech) => tech !== techName) }
+      }
+      return { ...prev, technologies: [...prev.technologies, techName] }
+    })
   }
 
   if (isLoading) {
@@ -271,8 +326,39 @@ export default function EditAdminProjectPage() {
         </label>
 
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Technologies (comma separated)</span>
-          <input required value={form.technologies} onChange={(e) => setForm((prev) => ({ ...prev, technologies: e.target.value }))} className="rounded-md border border-border bg-background px-3 py-2 text-sm" />
+          <span className="text-sm font-medium">Technologies (skills dan tanlang)</span>
+          {skillsLoading ? <p className="text-sm text-muted-foreground">Skills yuklanmoqda...</p> : null}
+          {skillsError ? <p className="text-sm text-red-400">{skillsError}</p> : null}
+
+          {!skillsLoading && skills.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {skills.map((skill) => {
+                const isSelected = form.technologies.includes(skill.name)
+                return (
+                  <button
+                    key={skill.id}
+                    type="button"
+                    onClick={() => toggleTechnology(skill.name)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-background text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {skill.name}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {!skillsLoading && skills.length === 0 && !skillsError ? (
+            <p className="text-sm text-muted-foreground">Skill topilmadi. Avval `admin/skills` da skill qo&apos;shing.</p>
+          ) : null}
+
+          <p className="text-xs text-muted-foreground">
+            Tanlandi: {form.technologies.length > 0 ? form.technologies.join(", ") : "hech narsa tanlanmagan"}
+          </p>
         </label>
 
         <div className="grid gap-2">

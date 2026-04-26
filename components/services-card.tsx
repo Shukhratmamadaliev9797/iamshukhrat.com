@@ -40,7 +40,7 @@ export function ServicesCard() {
           <div className="flex items-end justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Specialization</p>
-              <h3 className="text-lg font-semibold text-foreground">Services Offering</h3>
+              <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors duration-300">Services Offering</h3>
             </div>
             <span className="text-2xl font-bold text-primary/20 font-mono">SH</span>
           </div>

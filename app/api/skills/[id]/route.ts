@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { deleteCloudinaryImage, hasCloudinaryConfig } from "@/lib/cloudinary"
-import { normalizeSkillCategory } from "@/lib/skills-categories"
+import { normalizeSkillCategory, normalizeSkillSubcategory } from "@/lib/skills-categories"
 import { deleteSkillInDb, getSkillByIdFromDb, hasSkillsDatabaseConfig, updateSkillInDb } from "@/lib/skills-db"
 
 function parseSkillId(value: string) {
@@ -38,20 +38,32 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
   try {
     const body = await req.json()
-    const name = String(body?.name ?? "").trim()
+    const nameI18nRaw = {
+      uz: String(body?.nameI18n?.uz ?? "").trim(),
+      ru: String(body?.nameI18n?.ru ?? "").trim(),
+      en: String(body?.nameI18n?.en ?? "").trim(),
+    }
+    const hasNameI18n = Object.prototype.hasOwnProperty.call(body ?? {}, "nameI18n")
+    const parsedNameI18n = nameI18nRaw.uz || nameI18nRaw.ru || nameI18nRaw.en ? nameI18nRaw : null
     const img = String(body?.img ?? "").trim()
     const imagePublicId = String(body?.imagePublicId ?? "").trim() || null
-
-    if (!name || !img) {
-      return NextResponse.json({ success: false, message: "Required fields: name, img." }, { status: 400 })
-    }
 
     const existingSkill = await getSkillByIdFromDb(id)
     if (!existingSkill) return NextResponse.json({ success: false, message: "Skill not found." }, { status: 404 })
 
     const category = body?.category ? normalizeSkillCategory(body.category) : existingSkill.category
+    const hasSubcategory = Object.prototype.hasOwnProperty.call(body ?? {}, "subcategory")
+    const subcategory = hasSubcategory
+      ? normalizeSkillSubcategory(body?.subcategory, category)
+      : normalizeSkillSubcategory(existingSkill.subcategory, category)
+    const nameI18n = hasNameI18n ? parsedNameI18n : existingSkill.nameI18n
+    const name = String(body?.name ?? "").trim() || (nameI18n?.uz || nameI18n?.en || nameI18n?.ru || existingSkill.name)
 
-    const updatedSkill = await updateSkillInDb(id, { name, img, imagePublicId, category })
+    if (!name || !img) {
+      return NextResponse.json({ success: false, message: "Required fields: name, img." }, { status: 400 })
+    }
+
+    const updatedSkill = await updateSkillInDb(id, { name, nameI18n, img, imagePublicId, category, subcategory })
     if (!updatedSkill) return NextResponse.json({ success: false, message: "Skill not found." }, { status: 404 })
 
     if (

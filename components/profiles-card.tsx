@@ -33,7 +33,7 @@ export function ProfilesCard() {
         <div className="flex items-end justify-between">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Stay With Me</p>
-            <h3 className="text-lg font-semibold text-foreground">Profiles</h3>
+            <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors duration-300">Profiles</h3>
           </div>
           <span className="text-2xl font-bold text-primary/20 font-mono">SH</span>
         </div>

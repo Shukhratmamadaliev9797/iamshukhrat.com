@@ -49,9 +49,24 @@ interface Project {
   previewType?: "desktop" | "mobile"
 }
 
+type SkillOption = {
+  name: string
+  img: string
+}
+
 type ProjectsPayload = {
   real: Project[]
   personal: Project[]
+}
+
+function normalizeTechName(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function resolveSkillImageSrc(src: string) {
+  if (!src) return "/placeholder.jpg"
+  if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/")) return src
+  return `/${src}`
 }
 
 function ProjectCardSkeleton() {
@@ -100,7 +115,17 @@ function ProjectsSectionSkeleton({ title }: { title: "Real" | "Personal" }) {
   )
 }
 
-function ProjectCard({ project, index, isVisible }: { project: Project; index: number; isVisible: boolean }) {
+function ProjectCard({
+  project,
+  index,
+  isVisible,
+  techImageMap,
+}: {
+  project: Project
+  index: number
+  isVisible: boolean
+  techImageMap: Record<string, string>
+}) {
   const isMobileByTech = project.technologies?.some((tech) =>
     ["react-native", "expo", "flutter", "swift", "kotlin", "android", "ios", "mobile"].includes(
       tech.toLowerCase(),
@@ -157,14 +182,20 @@ function ProjectCard({ project, index, isVisible }: { project: Project; index: n
           <h4 className="text-sm font-semibold text-foreground mb-3">Technologies</h4>
           <div className="flex flex-wrap gap-2">
             {project.technologies?.map((tech, idx) => {
+              const techImage = techImageMap[normalizeTechName(tech)] ?? `${tech}.png`
               return (
                 <img
                   key={`${project.name}-${tech}-${idx}`}
-                  className="h-10 w-10 object-cover"
-                  src={`${tech}.png`}
+                  className="h-9 w-9 object-cover"
+                  src={techImage}
                   alt={tech}
                   loading="lazy"
                   decoding="async"
+                  onError={(event) => {
+                    const target = event.currentTarget
+                    target.onerror = null
+                    target.src = "/placeholder.jpg"
+                  }}
                 />
               )
             })}
@@ -206,6 +237,7 @@ export default function ProjectsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [projects, setProjects] = useState<ProjectsPayload>({ real: [], personal: [] })
+  const [techImageMap, setTechImageMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let isMounted = true
@@ -215,15 +247,30 @@ export default function ProjectsPage() {
         setIsVisible(false)
         setError("")
         setIsLoading(true)
-        const response = await fetch("/api/projects", { cache: "no-store" })
-        const payload = await response.json()
+        const [projectsResponse, skillsResponse] = await Promise.all([
+          fetch("/api/projects", { cache: "no-store" }),
+          fetch("/api/skills", { cache: "no-store" }),
+        ])
+        const payload = await projectsResponse.json()
 
-        if (!response.ok) {
-          throw new Error(payload?.message || `Request failed with status ${response.status}`)
+        if (!projectsResponse.ok) {
+          throw new Error(payload?.message || `Request failed with status ${projectsResponse.status}`)
         }
 
         if (isMounted && payload?.success && payload?.data) {
           setProjects(payload.data)
+        }
+
+        if (isMounted && skillsResponse.ok) {
+          const skillsPayload = await skillsResponse.json()
+          const skills = Array.isArray(skillsPayload?.skills) ? (skillsPayload.skills as SkillOption[]) : []
+          const map = skills.reduce<Record<string, string>>((accumulator, skill) => {
+            const key = normalizeTechName(String(skill.name ?? ""))
+            if (!key) return accumulator
+            accumulator[key] = resolveSkillImageSrc(String(skill.img ?? ""))
+            return accumulator
+          }, {})
+          setTechImageMap(map)
         }
       } catch (error) {
         if (isMounted) {
@@ -289,6 +336,7 @@ export default function ProjectsPage() {
                       project={project}
                       index={index}
                       isVisible={isVisible}
+                      techImageMap={techImageMap}
                     />
                   ))}
                 </div>
@@ -313,6 +361,7 @@ export default function ProjectsPage() {
                       project={project}
                       index={index + projects.real.length}
                       isVisible={isVisible}
+                      techImageMap={techImageMap}
                     />
                   ))}
                 </div>

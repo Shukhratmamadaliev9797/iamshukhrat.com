@@ -6,9 +6,10 @@ import { useState } from "react"
 
 type ProjectCardActionsProps = {
   projectId: number
+  onDeleted?: () => void
 }
 
-export function ProjectCardActions({ projectId }: ProjectCardActionsProps) {
+export function ProjectCardActions({ projectId, onDeleted }: ProjectCardActionsProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -25,6 +26,7 @@ export function ProjectCardActions({ projectId }: ProjectCardActionsProps) {
       if (!res.ok || !payload?.success) {
         throw new Error(payload?.message || "Delete xatoligi.")
       }
+      onDeleted?.()
       router.refresh()
     } catch (error) {
       alert(error instanceof Error ? error.message : "Delete amalga oshmadi.")

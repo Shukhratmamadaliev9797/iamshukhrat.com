@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 interface MacbookFrameProps {
   imageSrc: string
@@ -10,15 +10,12 @@ interface MacbookFrameProps {
 export function MacbookFrame({ imageSrc, alt }: MacbookFrameProps) {
   const [loaded, setLoaded] = useState(false)
 
+  useEffect(() => {
+    setLoaded(false)
+  }, [imageSrc])
+
   return (
     <div className="relative w-full max-w-[500px] overflow-hidden">
-      {!loaded ? (
-        <div
-          className="absolute z-0 animate-pulse rounded-md bg-muted/70"
-          style={{ top: "2.131%", left: "10.699%", width: "78.602%", height: "86.318%" }}
-        />
-      ) : null}
-
       {/* MacBook frame image */}
       <img
         src="/macbook-frame-base.png"
@@ -30,7 +27,7 @@ export function MacbookFrame({ imageSrc, alt }: MacbookFrameProps) {
       
       {/* Project screenshot positioned inside the screen */}
       <div
-        className="absolute z-0"
+        className="absolute z-0 overflow-hidden bg-black"
         style={{
           top: "2.131%",
           left: "10.699%",
@@ -38,13 +35,20 @@ export function MacbookFrame({ imageSrc, alt }: MacbookFrameProps) {
           height: "86.318%",
         }}
       >
+        {!loaded ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-muted/60">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+          </div>
+        ) : null}
+
         <img
           src={imageSrc || "/placeholder.svg"}
           alt={alt}
-          className="w-full h-full object-cover object-top"
+          className={`h-full w-full object-cover object-top transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
           loading="lazy"
           decoding="async"
           onLoad={() => setLoaded(true)}
+          onError={() => setLoaded(true)}
         />
       </div>
     </div>

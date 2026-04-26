@@ -380,3 +380,45 @@ export async function deleteProjectInDb(id: number): Promise<boolean> {
 
   return rows.length > 0
 }
+
+export async function reorderProjectsInDb(category: ProjectCategory, ids: number[]): Promise<void> {
+  await ensureProjectsTable()
+
+  const sql = getSqlClient()
+  if (!sql) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+
+  const normalizedIds = ids
+    .map((id) => Number(id))
+    .filter((id) => Number.isInteger(id) && id > 0)
+
+  if (normalizedIds.length === 0) return
+
+  const existingRows = (await sql`
+    SELECT id
+    FROM projects
+    WHERE category = ${category}
+  `) as Array<{ id: number }>
+
+  const existingIds = new Set(existingRows.map((row) => Number(row.id)))
+
+  if (existingIds.size !== normalizedIds.length) {
+    throw new Error("Project ids count does not match category projects.")
+  }
+
+  for (const id of normalizedIds) {
+    if (!existingIds.has(id)) {
+      throw new Error("Invalid project id in reorder request.")
+    }
+  }
+
+  for (let index = 0; index < normalizedIds.length; index += 1) {
+    const id = normalizedIds[index]
+    await sql`
+      UPDATE projects
+      SET sort_order = ${index}, updated_at = NOW()
+      WHERE id = ${id} AND category = ${category}
+    `
+  }
+}

@@ -21,13 +21,15 @@ function formatDateTime(value: string) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "UTC",
   }).format(date)
 }
 
-function isRecent(value: string) {
+function isRecent(value: string, nowMs: number | null) {
+  if (nowMs === null) return false
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return false
-  const diffMs = Date.now() - date.getTime()
+  const diffMs = nowMs - date.getTime()
   return diffMs <= 24 * 60 * 60 * 1000
 }
 
@@ -35,6 +37,11 @@ export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<ContactMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [nowMs, setNowMs] = useState<number | null>(null)
+
+  useEffect(() => {
+    setNowMs(Date.now())
+  }, [])
 
   useEffect(() => {
     let isMounted = true
@@ -86,7 +93,7 @@ export default function AdminMessagesPage() {
               Jami: <strong>{messages.length}</strong>
             </span>
             <span className="rounded-full border border-border bg-background px-3 py-1">
-              Oxirgi 24 soat: <strong>{messages.filter((item) => isRecent(item.createdAt)).length}</strong>
+              Oxirgi 24 soat: <strong>{messages.filter((item) => isRecent(item.createdAt, nowMs)).length}</strong>
             </span>
           </div>
         </div>
@@ -110,7 +117,7 @@ export default function AdminMessagesPage() {
                     <span className="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
                       #{messages.length - index}
                     </span>
-                    {isRecent(item.createdAt) ? (
+                    {isRecent(item.createdAt, nowMs) ? (
                       <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400">
                         New
                       </span>
