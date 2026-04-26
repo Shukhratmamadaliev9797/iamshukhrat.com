@@ -283,8 +283,13 @@ export default function ProjectsPage() {
         setIsVisible(false)
         setError("")
         setIsLoading(true)
+        if (isMounted) {
+          setProjects({ real: [], personal: [] })
+        }
+
+        const requestSuffix = `?ts=${Date.now()}`
         const [projectsResponse, skillsResponse] = await Promise.all([
-          fetch("/api/projects", { cache: "no-store" }),
+          fetch(`/api/projects${requestSuffix}`, { cache: "no-store" }),
           fetch("/api/skills", { cache: "no-store" }),
         ])
         const payload = await projectsResponse.json()
@@ -311,6 +316,7 @@ export default function ProjectsPage() {
       } catch (error) {
         if (isMounted) {
           setError(error instanceof Error ? error.message : "Projects yuklab bo'lmadi.")
+          setProjects({ real: [], personal: [] })
         }
       } finally {
         if (isMounted) {
@@ -352,7 +358,7 @@ export default function ProjectsPage() {
             <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-sm text-red-300">{error}</div>
           ) : null}
 
-          {!isLoading ? (
+          {!isLoading && !error ? (
             <>
               {/* Real Projects Section */}
               <section className="mb-16">
