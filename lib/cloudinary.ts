@@ -31,6 +31,20 @@ export function hasCloudinaryConfig() {
   )
 }
 
+function sanitizeFolder(value: string) {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9/_-]/g, "")
+    .replace(/\/{2,}/g, "/")
+    .replace(/^\/|\/$/g, "")
+}
+
+function withBaseFolder(folder: string) {
+  const base = sanitizeFolder(process.env.CLOUDINARY_FOLDER_PREFIX || "iamshukhrat.com")
+  const sub = sanitizeFolder(folder)
+  return sub ? `${base}/${sub}` : base
+}
+
 function toDataUri(fileBuffer: Buffer, mimeType: string) {
   return `data:${mimeType};base64,${fileBuffer.toString("base64")}`
 }
@@ -44,8 +58,9 @@ export async function uploadProjectImageToCloudinary(params: {
   ensureCloudinaryConfig()
 
   const dataUri = toDataUri(params.fileBuffer, params.mimeType)
+  const scopedFolder = withBaseFolder(params.folder)
   const result = await cloudinary.uploader.upload(dataUri, {
-    folder: params.folder,
+    folder: scopedFolder,
     resource_type: "image",
     public_id: params.publicId,
     overwrite: true,

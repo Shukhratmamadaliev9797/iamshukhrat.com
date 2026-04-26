@@ -1,6 +1,6 @@
 "use client"
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react"
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
@@ -15,8 +15,12 @@ type FormState = {
   previewType: "desktop" | "mobile"
   name: LocalizedField
   url: string
+  playStoreUrl: string
+  appStoreUrl: string
+  youtubeUrl: string
   img: string
   imagePublicId: string
+  additionalImages: AdditionalImage[]
   technologies: string[]
   description: LocalizedField
   badge: LocalizedField
@@ -29,6 +33,50 @@ type SkillOption = {
   name: string
 }
 
+type AdditionalImage = {
+  url: string
+  publicId: string | null
+}
+
+function normalizeTechnologyName(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function dedupeTechnologies(technologies: string[]) {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const raw of technologies) {
+    const value = String(raw).trim()
+    const key = normalizeTechnologyName(value)
+    if (!value || seen.has(key)) continue
+    seen.add(key)
+    result.push(value)
+  }
+
+  return result
+}
+
+function reconcileTechnologiesWithSkills(technologies: string[], skills: SkillOption[]) {
+  if (skills.length === 0) return dedupeTechnologies(technologies)
+
+  const skillNameByNormalized = new Map<string, string>()
+  for (const skill of skills) {
+    const key = normalizeTechnologyName(skill.name)
+    if (!key || skillNameByNormalized.has(key)) continue
+    skillNameByNormalized.set(key, skill.name)
+  }
+
+  const reconciled = technologies
+    .map((tech) => {
+      const key = normalizeTechnologyName(tech)
+      return skillNameByNormalized.get(key) ?? ""
+    })
+    .filter(Boolean)
+
+  return dedupeTechnologies(reconciled as string[])
+}
+
 const initialLocalized: LocalizedField = { uz: "", ru: "", en: "" }
 
 const initialState: FormState = {
@@ -36,8 +84,12 @@ const initialState: FormState = {
   previewType: "desktop",
   name: { ...initialLocalized },
   url: "",
+  playStoreUrl: "",
+  appStoreUrl: "",
+  youtubeUrl: "",
   img: "",
   imagePublicId: "",
+  additionalImages: [],
   technologies: [],
   description: { ...initialLocalized },
   badge: { ...initialLocalized },
@@ -53,6 +105,20 @@ function toLocalized(value?: LocalizedField | null, fallback = ""): LocalizedFie
   }
 }
 
+function resolveImageSrc(src: string) {
+  if (!src) return "/placeholder.jpg"
+  if (
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("/") ||
+    src.startsWith("blob:") ||
+    src.startsWith("data:")
+  ) {
+    return src
+  }
+  return `/${src}`
+}
+
 export default function EditAdminProjectPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -63,6 +129,9 @@ export default function EditAdminProjectPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [localPreviewUrl, setLocalPreviewUrl] = useState("")
+  const [selectedAdditionalImageFiles, setSelectedAdditionalImageFiles] = useState<File[]>([])
+  const [additionalPreviewUrls, setAdditionalPreviewUrls] = useState<string[]>([])
+  const additionalPreviewUrlsRef = useRef<string[]>([])
   const [error, setError] = useState("")
   const [uploadMessage, setUploadMessage] = useState("")
   const [skills, setSkills] = useState<SkillOption[]>([])
@@ -70,13 +139,29 @@ export default function EditAdminProjectPage() {
   const [skillsError, setSkillsError] = useState("")
 
   const projectNameForUpload = form.name.uz.trim() || form.name.en.trim() || form.name.ru.trim()
-  const previewImage = localPreviewUrl || form.img
+  const previewImage = resolveImageSrc(localPreviewUrl || form.img)
+  const selectedTechSet = useMemo(
+    () => new Set(form.technologies.map((tech) => normalizeTechnologyName(tech))),
+    [form.technologies],
+  )
 
   useEffect(() => {
     return () => {
       if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl)
     }
   }, [localPreviewUrl])
+
+  useEffect(() => {
+    additionalPreviewUrlsRef.current = additionalPreviewUrls
+  }, [additionalPreviewUrls])
+
+  useEffect(() => {
+    return () => {
+      for (const previewUrl of additionalPreviewUrlsRef.current) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [])
 
   function setLocalizedField(field: "name" | "description" | "badge", lang: keyof LocalizedField, value: string) {
     setForm((prev) => ({
@@ -143,10 +228,28 @@ export default function EditAdminProjectPage() {
           previewType: project.previewType === "mobile" ? "mobile" : "desktop",
           name: toLocalized(project.nameI18n, project.name),
           url: project.url,
+          playStoreUrl: String(project.playStoreUrl ?? ""),
+          appStoreUrl: String(project.appStoreUrl ?? ""),
+          youtubeUrl: String(project.youtubeUrl ?? ""),
           img: project.img,
           imagePublicId: project.imagePublicId ?? "",
+          additionalImages: Array.isArray(project.additionalImages)
+            ? project.additionalImages
+                .map((item: unknown) => {
+                  if (!item || typeof item !== "object") return null
+                  const source = item as Record<string, unknown>
+                  const url = String(source.url ?? "").trim()
+                  if (!url) return null
+                  const publicIdRaw = String(source.publicId ?? "").trim()
+                  return {
+                    url,
+                    publicId: publicIdRaw || null,
+                  } satisfies AdditionalImage
+                })
+                .filter((item: AdditionalImage | null): item is AdditionalImage => Boolean(item))
+            : [],
           technologies: Array.isArray(project.technologies)
-            ? project.technologies.map((tech: unknown) => String(tech).trim()).filter(Boolean)
+            ? dedupeTechnologies(project.technologies.map((tech: unknown) => String(tech).trim()).filter(Boolean))
             : [],
           description: toLocalized(project.descriptionI18n, project.description),
           badge: toLocalized(project.badgeI18n, project.badge ?? ""),
@@ -163,6 +266,20 @@ export default function EditAdminProjectPage() {
     loadProject()
   }, [projectId])
 
+  useEffect(() => {
+    if (skills.length === 0) return
+
+    setForm((prev) => {
+      const normalized = reconcileTechnologiesWithSkills(prev.technologies, skills)
+      const isSame =
+        normalized.length === prev.technologies.length &&
+        normalized.every((value, index) => value === prev.technologies[index])
+
+      if (isSame) return prev
+      return { ...prev, technologies: normalized }
+    })
+  }, [skills])
+
   function handleImageSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     if (!file) return
@@ -174,14 +291,47 @@ export default function EditAdminProjectPage() {
     setUploadMessage("Yangi rasm tanlandi. Saqlanganda upload bo'ladi.")
   }
 
-  function buildPayload(overrides?: { img?: string; imagePublicId?: string }) {
+  function handleAdditionalImagesSelect(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    if (files.length === 0) return
+
+    const nextPreviewUrls = files.map((file) => URL.createObjectURL(file))
+    setSelectedAdditionalImageFiles((prev) => [...prev, ...files])
+    setAdditionalPreviewUrls((prev) => [...prev, ...nextPreviewUrls])
+    event.target.value = ""
+    setUploadMessage("Qo'shimcha rasmlar tanlandi. Saqlaganda upload bo'ladi.")
+  }
+
+  function removePendingAdditionalImageAt(index: number) {
+    setSelectedAdditionalImageFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+    setAdditionalPreviewUrls((prev) => {
+      const target = prev[index]
+      if (target) URL.revokeObjectURL(target)
+      return prev.filter((_, itemIndex) => itemIndex !== index)
+    })
+  }
+
+  function removeExistingAdditionalImageAt(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      additionalImages: prev.additionalImages.filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
+  function buildPayload(overrides?: { img?: string; imagePublicId?: string; additionalImages?: AdditionalImage[] }) {
+    const syncedTechnologies = reconcileTechnologiesWithSkills(form.technologies, skills)
+
     return {
       category: form.category,
       previewType: form.previewType,
       url: form.url,
+      playStoreUrl: form.playStoreUrl,
+      appStoreUrl: form.appStoreUrl,
+      youtubeUrl: form.youtubeUrl,
       img: overrides?.img ?? form.img,
       imagePublicId: overrides?.imagePublicId ?? form.imagePublicId,
-      technologies: form.technologies,
+      additionalImages: overrides?.additionalImages ?? form.additionalImages,
+      technologies: syncedTechnologies,
       github: form.github,
       admin: form.admin,
       nameI18n: form.name,
@@ -224,10 +374,35 @@ export default function EditAdminProjectPage() {
         imagePublicId = uploadPayload.publicId ?? ""
       }
 
+      const additionalImages: AdditionalImage[] = [...form.additionalImages]
+      if (selectedAdditionalImageFiles.length > 0) {
+        for (const additionalFile of selectedAdditionalImageFiles) {
+          const uploadFormData = new FormData()
+          uploadFormData.append("file", additionalFile)
+          uploadFormData.append("projectName", projectNameForUpload)
+          uploadFormData.append("projectId", String(projectId))
+
+          const uploadResponse = await fetch("/api/uploads/project-image", {
+            method: "POST",
+            body: uploadFormData,
+          })
+          const uploadPayload = await uploadResponse.json()
+
+          if (!uploadResponse.ok || !uploadPayload?.success || !uploadPayload?.imageUrl) {
+            throw new Error(uploadPayload?.message || "Qo'shimcha rasm upload xatoligi.")
+          }
+
+          additionalImages.push({
+            url: String(uploadPayload.imageUrl),
+            publicId: String(uploadPayload.publicId ?? "") || null,
+          })
+        }
+      }
+
       const response = await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload({ img, imagePublicId })),
+        body: JSON.stringify(buildPayload({ img, imagePublicId, additionalImages })),
       })
 
       const payload = await response.json()
@@ -246,11 +421,15 @@ export default function EditAdminProjectPage() {
 
   function toggleTechnology(techName: string) {
     setForm((prev) => {
-      const exists = prev.technologies.includes(techName)
+      const normalizedTechName = normalizeTechnologyName(techName)
+      const exists = prev.technologies.some((tech) => normalizeTechnologyName(tech) === normalizedTechName)
       if (exists) {
-        return { ...prev, technologies: prev.technologies.filter((tech) => tech !== techName) }
+        return {
+          ...prev,
+          technologies: prev.technologies.filter((tech) => normalizeTechnologyName(tech) !== normalizedTechName),
+        }
       }
-      return { ...prev, technologies: [...prev.technologies, techName] }
+      return { ...prev, technologies: dedupeTechnologies([...prev.technologies, techName]) }
     })
   }
 
@@ -306,10 +485,42 @@ export default function EditAdminProjectPage() {
           </div>
         </div>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Project URL</span>
-          <input type="url" value={form.url} onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))} className="rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="https://example.com (optional)" />
-        </label>
+        {form.previewType === "mobile" ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">Play Market URL</span>
+              <input
+                type="url"
+                value={form.playStoreUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, playStoreUrl: e.target.value }))}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                placeholder="https://play.google.com/store/apps/details?id=..."
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">App Store URL</span>
+              <input
+                type="url"
+                value={form.appStoreUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, appStoreUrl: e.target.value }))}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                placeholder="https://apps.apple.com/app/..."
+              />
+            </label>
+          </div>
+        ) : (
+          <label className="grid gap-2">
+            <span className="text-sm font-medium">Project URL</span>
+            <input
+              type="url"
+              value={form.url}
+              onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+              placeholder="https://example.com (optional)"
+            />
+          </label>
+        )}
 
         <label className="grid gap-2">
           <span className="text-sm font-medium">Project image (Cloudinary)</span>
@@ -326,6 +537,55 @@ export default function EditAdminProjectPage() {
         </label>
 
         <label className="grid gap-2">
+          <span className="text-sm font-medium">Additional images (optional)</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleAdditionalImagesSelect}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-primary-foreground"
+          />
+
+          {form.additionalImages.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {form.additionalImages.map((image, index) => (
+                <div key={`${image.url}-${index}`} className="space-y-2">
+                  <img
+                    src={resolveImageSrc(image.url)}
+                    alt={`Additional image ${index + 1}`}
+                    className="h-24 w-full rounded-md border border-border object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeExistingAdditionalImageAt(index)}
+                    className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                  >
+                    Olib tashlash
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {additionalPreviewUrls.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {additionalPreviewUrls.map((previewUrl, index) => (
+                <div key={`${previewUrl}-${index}`} className="space-y-2">
+                  <img src={previewUrl} alt={`New additional image ${index + 1}`} className="h-24 w-full rounded-md border border-border object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removePendingAdditionalImageAt(index)}
+                    className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                  >
+                    Olib tashlash
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </label>
+
+        <label className="grid gap-2">
           <span className="text-sm font-medium">Technologies (skills dan tanlang)</span>
           {skillsLoading ? <p className="text-sm text-muted-foreground">Skills yuklanmoqda...</p> : null}
           {skillsError ? <p className="text-sm text-red-400">{skillsError}</p> : null}
@@ -333,7 +593,7 @@ export default function EditAdminProjectPage() {
           {!skillsLoading && skills.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {skills.map((skill) => {
-                const isSelected = form.technologies.includes(skill.name)
+                const isSelected = selectedTechSet.has(normalizeTechnologyName(skill.name))
                 return (
                   <button
                     key={skill.id}
@@ -378,6 +638,11 @@ export default function EditAdminProjectPage() {
             <input value={form.badge.en} onChange={(e) => setLocalizedField("badge", "en", e.target.value)} className="rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Badge (EN)" />
           </div>
         </div>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">YouTube URL (optional)</span>
+          <input type="url" value={form.youtubeUrl} onChange={(e) => setForm((prev) => ({ ...prev, youtubeUrl: e.target.value }))} className="rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="https://youtube.com/watch?v=..." />
+        </label>
 
         <label className="grid gap-2">
           <span className="text-sm font-medium">Github URL (optional)</span>

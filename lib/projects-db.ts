@@ -8,13 +8,22 @@ export type I18nText = {
   en: string
 }
 
+export type ProjectAdditionalImage = {
+  url: string
+  publicId: string | null
+}
+
 export interface ProjectRecord {
   id?: number
   category: ProjectCategory
   sortOrder: number
   name: string
   url: string
+  playStoreUrl?: string | null
+  appStoreUrl?: string | null
+  youtubeUrl?: string | null
   img: string
+  additionalImages: ProjectAdditionalImage[]
   badge?: string | null
   technologies: string[]
   description: string
@@ -31,7 +40,11 @@ export interface CreateProjectInput {
   category: ProjectCategory
   name: string
   url: string
+  playStoreUrl?: string | null
+  appStoreUrl?: string | null
+  youtubeUrl?: string | null
   img: string
+  additionalImages?: ProjectAdditionalImage[]
   technologies: string[]
   description: string
   badge?: string | null
@@ -48,7 +61,11 @@ export interface UpdateProjectInput {
   category: ProjectCategory
   name: string
   url: string
+  playStoreUrl?: string | null
+  appStoreUrl?: string | null
+  youtubeUrl?: string | null
   img: string
+  additionalImages?: ProjectAdditionalImage[]
   technologies: string[]
   description: string
   badge?: string | null
@@ -72,7 +89,11 @@ type ProjectRow = {
   sort_order: number
   name: string
   url: string
+  play_store_url: string | null
+  app_store_url: string | null
+  youtube_url: string | null
   img: string
+  additional_images: unknown | null
   badge: string | null
   technologies: string[]
   description: string
@@ -108,7 +129,11 @@ async function ensureProjectsTable() {
       sort_order INTEGER NOT NULL DEFAULT 0,
       name TEXT NOT NULL,
       url TEXT NOT NULL,
+      play_store_url TEXT,
+      app_store_url TEXT,
+      youtube_url TEXT,
       img TEXT NOT NULL,
+      additional_images JSONB NOT NULL DEFAULT '[]'::jsonb,
       badge TEXT,
       technologies TEXT[] NOT NULL DEFAULT '{}',
       description TEXT NOT NULL,
@@ -129,8 +154,13 @@ async function ensureProjectsTable() {
   await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS description_i18n JSONB`
   await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS badge_i18n JSONB`
   await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS image_public_id TEXT`
+  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS play_store_url TEXT`
+  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_store_url TEXT`
+  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS youtube_url TEXT`
+  await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS additional_images JSONB NOT NULL DEFAULT '[]'::jsonb`
   await sql`ALTER TABLE projects ADD COLUMN IF NOT EXISTS preview_type TEXT DEFAULT 'desktop'`
   await sql`UPDATE projects SET preview_type = 'desktop' WHERE preview_type IS NULL`
+  await sql`UPDATE projects SET additional_images = '[]'::jsonb WHERE additional_images IS NULL`
 }
 
 function groupProjects(projects: ProjectRecord[]): GroupedProjects {
@@ -152,6 +182,24 @@ function normalizeI18nText(value: unknown): I18nText | null {
   return { uz, ru, en }
 }
 
+function normalizeAdditionalImages(value: unknown): ProjectAdditionalImage[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null
+      const source = item as Record<string, unknown>
+      const url = String(source.url ?? "").trim()
+      if (!url) return null
+      const publicIdRaw = String(source.publicId ?? "").trim()
+      return {
+        url,
+        publicId: publicIdRaw || null,
+      } satisfies ProjectAdditionalImage
+    })
+    .filter((item): item is ProjectAdditionalImage => Boolean(item))
+}
+
 function mapProjectRow(row: ProjectRow): ProjectRecord {
   return {
     id: row.id,
@@ -159,7 +207,11 @@ function mapProjectRow(row: ProjectRow): ProjectRecord {
     sortOrder: row.sort_order,
     name: row.name,
     url: row.url,
+    playStoreUrl: row.play_store_url,
+    appStoreUrl: row.app_store_url,
+    youtubeUrl: row.youtube_url,
     img: row.img,
+    additionalImages: normalizeAdditionalImages(row.additional_images),
     badge: row.badge,
     technologies: row.technologies ?? [],
     description: row.description,
@@ -188,7 +240,11 @@ export async function getProjectsGroupedFromDb(): Promise<GroupedProjects> {
       sort_order,
       name,
       url,
+      play_store_url,
+      app_store_url,
+      youtube_url,
       img,
+      additional_images,
       badge,
       technologies,
       description,
@@ -229,14 +285,18 @@ export async function createProjectInDb(input: CreateProjectInput) {
 
   const rows = (await sql`
     INSERT INTO projects (
-      category, sort_order, name, url, img, badge, technologies, description, github, admin_url, image_public_id, preview_type, name_i18n, description_i18n, badge_i18n
+      category, sort_order, name, url, play_store_url, app_store_url, youtube_url, img, additional_images, badge, technologies, description, github, admin_url, image_public_id, preview_type, name_i18n, description_i18n, badge_i18n
     )
     VALUES (
       ${input.category},
       ${nextSortOrder},
       ${input.name},
       ${input.url},
+      ${input.playStoreUrl ?? null},
+      ${input.appStoreUrl ?? null},
+      ${input.youtubeUrl ?? null},
       ${input.img},
+      ${JSON.stringify(input.additionalImages ?? [])}::jsonb,
       ${input.badge ?? null},
       ${input.technologies},
       ${input.description},
@@ -254,7 +314,11 @@ export async function createProjectInDb(input: CreateProjectInput) {
       sort_order,
       name,
       url,
+      play_store_url,
+      app_store_url,
+      youtube_url,
       img,
+      additional_images,
       badge,
       technologies,
       description,
@@ -290,7 +354,11 @@ export async function getProjectByIdFromDb(id: number): Promise<ProjectRecord | 
       sort_order,
       name,
       url,
+      play_store_url,
+      app_store_url,
+      youtube_url,
       img,
+      additional_images,
       badge,
       technologies,
       description,
@@ -326,7 +394,11 @@ export async function updateProjectInDb(id: number, input: UpdateProjectInput): 
       category = ${input.category},
       name = ${input.name},
       url = ${input.url},
+      play_store_url = ${input.playStoreUrl ?? null},
+      app_store_url = ${input.appStoreUrl ?? null},
+      youtube_url = ${input.youtubeUrl ?? null},
       img = ${input.img},
+      additional_images = ${JSON.stringify(input.additionalImages ?? [])}::jsonb,
       badge = ${input.badge ?? null},
       technologies = ${input.technologies},
       description = ${input.description},
@@ -345,7 +417,11 @@ export async function updateProjectInDb(id: number, input: UpdateProjectInput): 
       sort_order,
       name,
       url,
+      play_store_url,
+      app_store_url,
+      youtube_url,
       img,
+      additional_images,
       badge,
       technologies,
       description,

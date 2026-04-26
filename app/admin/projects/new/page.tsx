@@ -1,6 +1,6 @@
 "use client"
 
-import { ChangeEvent, FormEvent, useEffect, useState } from "react"
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -15,8 +15,12 @@ type FormState = {
   previewType: "desktop" | "mobile"
   name: LocalizedField
   url: string
+  playStoreUrl: string
+  appStoreUrl: string
+  youtubeUrl: string
   img: string
   imagePublicId: string
+  additionalImages: AdditionalImage[]
   technologies: string[]
   description: LocalizedField
   badge: LocalizedField
@@ -29,6 +33,11 @@ type SkillOption = {
   name: string
 }
 
+type AdditionalImage = {
+  url: string
+  publicId: string | null
+}
+
 const initialLocalized: LocalizedField = { uz: "", ru: "", en: "" }
 
 const initialState: FormState = {
@@ -36,8 +45,12 @@ const initialState: FormState = {
   previewType: "desktop",
   name: { ...initialLocalized },
   url: "",
+  playStoreUrl: "",
+  appStoreUrl: "",
+  youtubeUrl: "",
   img: "",
   imagePublicId: "",
+  additionalImages: [],
   technologies: [],
   description: { ...initialLocalized },
   badge: { ...initialLocalized },
@@ -51,6 +64,9 @@ export default function NewAdminProjectPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [localPreviewUrl, setLocalPreviewUrl] = useState("")
+  const [selectedAdditionalImageFiles, setSelectedAdditionalImageFiles] = useState<File[]>([])
+  const [additionalPreviewUrls, setAdditionalPreviewUrls] = useState<string[]>([])
+  const additionalPreviewUrlsRef = useRef<string[]>([])
   const [uploadMessage, setUploadMessage] = useState("")
   const [error, setError] = useState("")
   const [skills, setSkills] = useState<SkillOption[]>([])
@@ -99,6 +115,18 @@ export default function NewAdminProjectPage() {
     }
   }, [localPreviewUrl])
 
+  useEffect(() => {
+    additionalPreviewUrlsRef.current = additionalPreviewUrls
+  }, [additionalPreviewUrls])
+
+  useEffect(() => {
+    return () => {
+      for (const previewUrl of additionalPreviewUrlsRef.current) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [])
+
   function setLocalizedField(field: "name" | "description" | "badge", lang: keyof LocalizedField, value: string) {
     setForm((prev) => ({
       ...prev,
@@ -120,13 +148,41 @@ export default function NewAdminProjectPage() {
     setUploadMessage("Rasm tanlandi. Project yaratilgandan keyin Cloudinary'ga yuklanadi.")
   }
 
-  function buildPayload(overrides?: { img?: string; imagePublicId?: string }) {
+  function handleAdditionalImagesSelect(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    if (files.length === 0) return
+
+    const nextPreviewUrls = files.map((file) => URL.createObjectURL(file))
+    setSelectedAdditionalImageFiles((prev) => [...prev, ...files])
+    setAdditionalPreviewUrls((prev) => [...prev, ...nextPreviewUrls])
+    event.target.value = ""
+    setUploadMessage("Qo'shimcha rasmlar tanlandi. Saqlaganda Cloudinary'ga yuklanadi.")
+  }
+
+  function removeAdditionalImageAt(index: number) {
+    setSelectedAdditionalImageFiles((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+    setAdditionalPreviewUrls((prev) => {
+      const target = prev[index]
+      if (target) URL.revokeObjectURL(target)
+      return prev.filter((_, itemIndex) => itemIndex !== index)
+    })
+  }
+
+  function buildPayload(overrides?: {
+    img?: string
+    imagePublicId?: string
+    additionalImages?: AdditionalImage[]
+  }) {
     return {
       category: form.category,
       previewType: form.previewType,
       url: form.url,
+      playStoreUrl: form.playStoreUrl,
+      appStoreUrl: form.appStoreUrl,
+      youtubeUrl: form.youtubeUrl,
       img: overrides?.img ?? form.img,
       imagePublicId: overrides?.imagePublicId ?? form.imagePublicId,
+      additionalImages: overrides?.additionalImages ?? form.additionalImages,
       technologies: form.technologies,
       github: form.github,
       admin: form.admin,
@@ -163,6 +219,9 @@ export default function NewAdminProjectPage() {
         throw new Error("Project ID qaytmadi.")
       }
 
+      let mainImageUrl = "/placeholder.svg"
+      let mainImagePublicId = ""
+
       if (selectedImageFile) {
         const uploadFormData = new FormData()
         uploadFormData.append("file", selectedImageFile)
@@ -178,22 +237,49 @@ export default function NewAdminProjectPage() {
         if (!uploadResponse.ok || !uploadPayload?.success || !uploadPayload?.imageUrl) {
           throw new Error(uploadPayload?.message || "Rasmni Cloudinary'ga yuklashda xatolik.")
         }
+        mainImageUrl = String(uploadPayload.imageUrl)
+        mainImagePublicId = String(uploadPayload.publicId ?? "")
+      }
 
-        const patchResponse = await fetch(`/api/projects/${createdProjectId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            buildPayload({
-              img: uploadPayload.imageUrl,
-              imagePublicId: uploadPayload.publicId ?? "",
-            }),
-          ),
-        })
-        const patchPayload = await patchResponse.json()
+      const additionalImages: AdditionalImage[] = [...form.additionalImages]
+      if (selectedAdditionalImageFiles.length > 0) {
+        for (const additionalFile of selectedAdditionalImageFiles) {
+          const uploadFormData = new FormData()
+          uploadFormData.append("file", additionalFile)
+          uploadFormData.append("projectName", projectNameForUpload)
+          uploadFormData.append("projectId", String(createdProjectId))
 
-        if (!patchResponse.ok || !patchPayload?.success) {
-          throw new Error(patchPayload?.message || "Project image update xatoligi.")
+          const uploadResponse = await fetch("/api/uploads/project-image", {
+            method: "POST",
+            body: uploadFormData,
+          })
+          const uploadPayload = await uploadResponse.json()
+          if (!uploadResponse.ok || !uploadPayload?.success || !uploadPayload?.imageUrl) {
+            throw new Error(uploadPayload?.message || "Qo'shimcha rasmni yuklashda xatolik.")
+          }
+
+          additionalImages.push({
+            url: String(uploadPayload.imageUrl),
+            publicId: String(uploadPayload.publicId ?? "") || null,
+          })
         }
+      }
+
+      const patchResponse = await fetch(`/api/projects/${createdProjectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          buildPayload({
+            img: mainImageUrl,
+            imagePublicId: mainImagePublicId,
+            additionalImages,
+          }),
+        ),
+      })
+      const patchPayload = await patchResponse.json()
+
+      if (!patchResponse.ok || !patchPayload?.success) {
+        throw new Error(patchPayload?.message || "Project image update xatoligi.")
       }
 
       router.push("/admin/projects")
@@ -241,6 +327,34 @@ export default function NewAdminProjectPage() {
         </label>
 
         <label className="grid gap-2">
+          <span className="text-sm font-medium">Additional images (optional)</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleAdditionalImagesSelect}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-primary-foreground"
+          />
+
+          {additionalPreviewUrls.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {additionalPreviewUrls.map((previewUrl, index) => (
+                <div key={`${previewUrl}-${index}`} className="space-y-2">
+                  <img src={previewUrl} alt={`Additional preview ${index + 1}`} className="h-24 w-full rounded-md border border-border object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeAdditionalImageAt(index)}
+                    className="rounded-md border border-red-500/40 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                  >
+                    Olib tashlash
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </label>
+
+        <label className="grid gap-2">
           <span className="text-sm font-medium">Preview Type</span>
           <select
             value={form.previewType}
@@ -263,10 +377,42 @@ export default function NewAdminProjectPage() {
           </div>
         </div>
 
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Project URL</span>
-          <input type="url" value={form.url} onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))} className="rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="https://example.com (optional)" />
-        </label>
+        {form.previewType === "mobile" ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">Play Market URL</span>
+              <input
+                type="url"
+                value={form.playStoreUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, playStoreUrl: e.target.value }))}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                placeholder="https://play.google.com/store/apps/details?id=..."
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">App Store URL</span>
+              <input
+                type="url"
+                value={form.appStoreUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, appStoreUrl: e.target.value }))}
+                className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                placeholder="https://apps.apple.com/app/..."
+              />
+            </label>
+          </div>
+        ) : (
+          <label className="grid gap-2">
+            <span className="text-sm font-medium">Project URL</span>
+            <input
+              type="url"
+              value={form.url}
+              onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))}
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+              placeholder="https://example.com (optional)"
+            />
+          </label>
+        )}
 
         <label className="grid gap-2">
           <span className="text-sm font-medium">Project image (Cloudinary)</span>
@@ -335,6 +481,11 @@ export default function NewAdminProjectPage() {
             <input value={form.badge.en} onChange={(e) => setLocalizedField("badge", "en", e.target.value)} className="rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="Badge (EN)" />
           </div>
         </div>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">YouTube URL (optional)</span>
+          <input type="url" value={form.youtubeUrl} onChange={(e) => setForm((prev) => ({ ...prev, youtubeUrl: e.target.value }))} className="rounded-md border border-border bg-background px-3 py-2 text-sm" placeholder="https://youtube.com/watch?v=..." />
+        </label>
 
         <label className="grid gap-2">
           <span className="text-sm font-medium">Github URL (optional)</span>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ExternalLink, Github } from "lucide-react"
+import { Apple, ExternalLink, Github, PlayCircle, Youtube } from "lucide-react"
 import { MacbookFrame } from "@/components/macbook-frame"
 import { PhoneFrame } from "@/components/phone-frame"
 import { Navbar } from "@/components/navbar"
@@ -40,6 +40,9 @@ function TechBadge({ tech }: { tech: string }) {
 interface Project {
   name: string
   url?: string
+  playStoreUrl?: string
+  appStoreUrl?: string
+  youtubeUrl?: string
   img: string
   technologies: string[]
   description: string
@@ -204,7 +207,7 @@ function ProjectCard({
 
         {/* Buttons */}
         <div className="flex flex-wrap gap-3 pt-2">
-          {project.url ? (
+          {!isMobileProject && project.url ? (
             <a
               href={project.url}
               target="_blank"
@@ -213,6 +216,39 @@ function ProjectCard({
             >
               Live
               <ExternalLink className="w-4 h-4" />
+            </a>
+          ) : null}
+          {isMobileProject && project.playStoreUrl ? (
+            <a
+              href={project.playStoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-transparent text-foreground text-sm font-medium transition-all hover:bg-primary/10 hover:border-primary hover:text-primary"
+            >
+              <PlayCircle className="w-4 h-4" />
+              Play Market
+            </a>
+          ) : null}
+          {isMobileProject && project.appStoreUrl ? (
+            <a
+              href={project.appStoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-transparent text-foreground text-sm font-medium transition-all hover:bg-primary/10 hover:border-primary hover:text-primary"
+            >
+              <Apple className="w-4 h-4" />
+              App Store
+            </a>
+          ) : null}
+          {project.youtubeUrl ? (
+            <a
+              href={project.youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-transparent text-foreground text-sm font-medium transition-all hover:bg-primary/10 hover:border-primary hover:text-primary"
+            >
+              <Youtube className="w-4 h-4" />
+              YouTube
             </a>
           ) : null}
           {project.github && (

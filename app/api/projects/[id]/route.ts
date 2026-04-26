@@ -4,6 +4,7 @@ import {
   getProjectByIdFromDb,
   hasDatabaseConfig,
   type I18nText,
+  type ProjectAdditionalImage,
   type ProjectCategory,
   type ProjectPreviewType,
   updateProjectInDb,
@@ -22,6 +23,24 @@ function normalizeI18nPayload(value: unknown) {
     ru: String(source.ru ?? "").trim(),
     en: String(source.en ?? "").trim(),
   } satisfies I18nText
+}
+
+function normalizeAdditionalImagesPayload(value: unknown): ProjectAdditionalImage[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null
+      const source = item as Record<string, unknown>
+      const url = String(source.url ?? "").trim()
+      if (!url) return null
+      const publicIdRaw = String(source.publicId ?? "").trim()
+      return {
+        url,
+        publicId: publicIdRaw || null,
+      } satisfies ProjectAdditionalImage
+    })
+    .filter((item): item is ProjectAdditionalImage => Boolean(item))
 }
 
 export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
@@ -67,8 +86,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       ? "mobile"
       : "desktop") as ProjectPreviewType
     const url = String(body?.url ?? "").trim()
+    const playStoreUrl = String(body?.playStoreUrl ?? "").trim() || null
+    const appStoreUrl = String(body?.appStoreUrl ?? "").trim() || null
+    const youtubeUrl = String(body?.youtubeUrl ?? "").trim() || null
     const img = String(body?.img ?? "").trim()
     const imagePublicId = String(body?.imagePublicId ?? "").trim() || null
+    const additionalImages = normalizeAdditionalImagesPayload(body?.additionalImages)
     const github = String(body?.github ?? "").trim() || null
     const admin = String(body?.admin ?? "").trim() || null
     const nameI18n = normalizeI18nPayload(body?.nameI18n)
@@ -89,6 +112,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     if (!["desktop", "mobile"].includes(previewType)) {
       return NextResponse.json({ success: false, message: "Invalid previewType." }, { status: 400 })
     }
+    if (previewType === "mobile" && !playStoreUrl && !appStoreUrl) {
+      return NextResponse.json(
+        { success: false, message: "Mobile project uchun Play Market yoki App Store URL kiriting." },
+        { status: 400 },
+      )
+    }
 
     if (!name || !img || !description || technologies.length === 0) {
       return NextResponse.json(
@@ -106,8 +135,12 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       category,
       name,
       url,
+      playStoreUrl,
+      appStoreUrl,
+      youtubeUrl,
       img,
       technologies,
+      additionalImages,
       description,
       badge,
       github,
@@ -134,6 +167,24 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
         await deleteCloudinaryImage(oldImagePublicId)
       } catch (cleanupError) {
         console.error("Failed to remove old cloudinary image:", cleanupError)
+      }
+    }
+
+    const oldAdditionalPublicIds = (existingProject.additionalImages ?? [])
+      .map((item) => String(item.publicId ?? "").trim())
+      .filter(Boolean)
+    const newAdditionalPublicIds = new Set(
+      (updatedProject.additionalImages ?? []).map((item) => String(item.publicId ?? "").trim()).filter(Boolean),
+    )
+
+    if (hasCloudinaryConfig()) {
+      for (const publicId of oldAdditionalPublicIds) {
+        if (newAdditionalPublicIds.has(publicId)) continue
+        try {
+          await deleteCloudinaryImage(publicId)
+        } catch (cleanupError) {
+          console.error("Failed to remove outdated additional project image:", cleanupError)
+        }
       }
     }
 
@@ -171,6 +222,20 @@ export async function DELETE(_req: Request, context: { params: Promise<{ id: str
         await deleteCloudinaryImage(existingProject.imagePublicId)
       } catch (cleanupError) {
         console.error("Failed to remove deleted project's cloudinary image:", cleanupError)
+      }
+    }
+
+    if (hasCloudinaryConfig()) {
+      const additionalPublicIds = (existingProject.additionalImages ?? [])
+        .map((item) => String(item.publicId ?? "").trim())
+        .filter(Boolean)
+
+      for (const publicId of additionalPublicIds) {
+        try {
+          await deleteCloudinaryImage(publicId)
+        } catch (cleanupError) {
+          console.error("Failed to remove deleted project's additional image:", cleanupError)
+        }
       }
     }
 

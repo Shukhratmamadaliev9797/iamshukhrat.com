@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ExternalLink, Github } from "lucide-react"
+import { Apple, ExternalLink, Github, PlayCircle, Youtube } from "lucide-react"
 import { MacbookFrame } from "@/components/macbook-frame"
 import { PhoneFrame } from "@/components/phone-frame"
 import { ProjectCardActions } from "@/components/admin/project-card-actions"
@@ -90,7 +90,7 @@ function AdminProjectCardContent({
         </div>
 
         <div className="flex flex-wrap gap-3 pt-2">
-          {project.url ? (
+          {!isMobileProject && project.url ? (
             <a
               href={project.url}
               target="_blank"
@@ -99,6 +99,40 @@ function AdminProjectCardContent({
             >
               Live
               <ExternalLink className="h-4 w-4" />
+            </a>
+          ) : null}
+          {isMobileProject && project.playStoreUrl ? (
+            <a
+              href={project.playStoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:bg-primary/10 hover:text-primary"
+            >
+              <PlayCircle className="h-4 w-4" />
+              Play Market
+            </a>
+          ) : null}
+
+          {isMobileProject && project.appStoreUrl ? (
+            <a
+              href={project.appStoreUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:bg-primary/10 hover:text-primary"
+            >
+              <Apple className="h-4 w-4" />
+              App Store
+            </a>
+          ) : null}
+          {project.youtubeUrl ? (
+            <a
+              href={project.youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-all hover:border-primary hover:bg-primary/10 hover:text-primary"
+            >
+              <Youtube className="h-4 w-4" />
+              YouTube
             </a>
           ) : null}
 

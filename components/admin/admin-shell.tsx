@@ -16,6 +16,11 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
+    href: "/admin/skills",
+    label: "Skills",
+    icon: Sparkles,
+  },
+  {
     href: "/admin/projects",
     label: "Projects",
     icon: FolderKanban,
@@ -25,19 +30,14 @@ const navItems = [
     label: "Messages",
     icon: Mail,
   },
-  {
-    href: "/admin/skills",
-    label: "Skills",
-    icon: Sparkles,
-  },
 ]
 
 export function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname()
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 backdrop-blur">
+    <div className="h-screen overflow-hidden bg-background text-foreground">
+      <header className="z-20 shrink-0 border-b border-border/70 bg-background/95 backdrop-blur">
         <div className="flex h-16 w-full items-center justify-between px-4 md:px-6">
           <Link href="/admin/dashboard" className="text-lg font-semibold tracking-wide">
             Admin Panel
@@ -51,9 +51,9 @@ export function AdminShell({ children }: AdminShellProps) {
         </div>
       </header>
 
-      <div className="grid w-full grid-cols-1 md:grid-cols-[220px_1fr]">
-        <aside className="border-r border-border/70 p-3 md:min-h-[calc(100vh-4rem)] md:p-3">
-          <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="grid h-[calc(100vh-4rem)] w-full min-h-0 grid-cols-1 md:grid-cols-[220px_1fr]">
+        <aside className="shrink-0 overflow-hidden border-r border-border/70 bg-background p-3 md:p-3">
+          <div className="mb-3 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <PanelLeft className="h-4 w-4" />
             <span>Menu</span>
           </div>
@@ -90,7 +90,9 @@ export function AdminShell({ children }: AdminShellProps) {
           </nav>
         </aside>
 
-        <main className="p-4 md:p-8">{children}</main>
+        <main className="min-h-0 overflow-y-auto bg-muted/30 p-4 md:p-8">
+          <div className="rounded-2xl border border-border/60 bg-background/85 p-4 md:p-6">{children}</div>
+        </main>
       </div>
     </div>
   )
